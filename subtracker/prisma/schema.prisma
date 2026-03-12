@@ -1,0 +1,79 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "sqlite"
+}
+
+model Organization {
+  id        String   @id @default(cuid())
+  name      String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  subcontractors Subcontractor[]
+}
+
+model Subcontractor {
+  id             String   @id @default(cuid())
+  name           String
+  contactEmail   String?
+  organizationId String
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  documents    Document[]
+
+  @@index([organizationId])
+}
+
+model Document {
+  id               String   @id @default(cuid())
+  fileName         String
+  filePath         String
+  mimeType         String
+  status           String   @default("pending") // pending | processing | processed | failed
+  subcontractorId  String
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  subcontractor  Subcontractor   @relation(fields: [subcontractorId], references: [id], onDelete: Cascade)
+  coverages      Coverage[]
+  extractionLogs ExtractionLog[]
+
+  @@index([subcontractorId])
+  @@index([status])
+}
+
+model Coverage {
+  id         String   @id @default(cuid())
+  type       String   // e.g. "general_liability", "auto", "workers_comp", "umbrella"
+  carrier    String?
+  policyNumber String?
+  effectiveDate DateTime?
+  expirationDate DateTime?
+  limitAmount   Float?
+  documentId String
+  createdAt  DateTime @default(now())
+
+  document Document @relation(fields: [documentId], references: [id], onDelete: Cascade)
+
+  @@index([documentId])
+  @@index([type])
+}
+
+model ExtractionLog {
+  id         String   @id @default(cuid())
+  documentId String
+  status     String   // success | error
+  rawOutput  String?
+  error      String?
+  createdAt  DateTime @default(now())
+
+  document Document @relation(fields: [documentId], references: [id], onDelete: Cascade)
+
+  @@index([documentId])
+}
