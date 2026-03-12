@@ -1,0 +1,76 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "sqlite"
+}
+
+// Core models (shared contract with Stream A)
+
+model Organization {
+  id        String   @id @default(cuid())
+  name      String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  subcontractors Subcontractor[]
+}
+
+model Subcontractor {
+  id             String   @id @default(cuid())
+  name           String
+  email          String?
+  organizationId String
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  organization Organization @relation(fields: [organizationId], references: [id])
+  documents    Document[]
+  complianceScores ComplianceScore[]
+}
+
+model Document {
+  id               String       @id @default(cuid())
+  subcontractorId  String
+  type             String       // COI, LICENSE, SAFETY_CERT
+  fileName         String
+  status           String       @default("pending") // pending, verified, expired, rejected
+  issueDate        DateTime?
+  expirationDate   DateTime?
+  extractedData    String?      // JSON blob of extracted fields
+  createdAt        DateTime     @default(now())
+  updatedAt        DateTime     @updatedAt
+
+  subcontractor Subcontractor @relation(fields: [subcontractorId], references: [id])
+  alerts        Alert[]
+}
+
+// Stream C models: Alerts
+
+model Alert {
+  id          String   @id @default(cuid())
+  documentId  String
+  type        String   // EXPIRATION_90, EXPIRATION_60, EXPIRATION_30, EXPIRED
+  status      String   @default("pending") // pending, sent, acknowledged, dismissed
+  scheduledAt DateTime
+  sentAt      DateTime?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  document Document @relation(fields: [documentId], references: [id])
+}
+
+// Stream C models: Compliance Scoring
+
+model ComplianceScore {
+  id               String   @id @default(cuid())
+  subcontractorId  String
+  overallScore     Float    // 0-100
+  breakdown        String   // JSON: { coi: number, license: number, safety: number }
+  status           String   // green, yellow, red
+  calculatedAt     DateTime @default(now())
+
+  subcontractor Subcontractor @relation(fields: [subcontractorId], references: [id])
+}
