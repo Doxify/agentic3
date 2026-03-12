@@ -1,0 +1,93 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+/// The business customer using SubTracker
+model Organization {
+  id        String   @id @default(cuid())
+  name      String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  subcontractors Subcontractor[]
+}
+
+/// A subcontractor that works for an organization
+model Subcontractor {
+  id             String   @id @default(cuid())
+  name           String
+  contactEmail   String?
+  contactPhone   String?
+  organizationId String
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  documents    Document[]
+
+  @@index([organizationId])
+}
+
+/// An uploaded document (COI, endorsement, etc.)
+model Document {
+  id               String         @id @default(cuid())
+  subcontractorId  String
+  filename         String
+  originalFilename String
+  mimeType         String
+  fileSize         Int
+  storagePath      String
+  documentType     String         @default("coi") // coi | endorsement | other
+  status           String         @default("pending") // pending | processing | processed | failed
+  createdAt        DateTime       @default(now())
+  updatedAt        DateTime       @updatedAt
+
+  subcontractor Subcontractor @relation(fields: [subcontractorId], references: [id], onDelete: Cascade)
+  coverages     Coverage[]
+  extractionLog ExtractionLog?
+
+  @@index([subcontractorId])
+  @@index([status])
+}
+
+/// Extracted coverage data from a COI document
+model Coverage {
+  id             String    @id @default(cuid())
+  documentId     String
+  coverageType   String    // general_liability | auto_liability | umbrella | workers_comp | professional_liability
+  carrier        String?
+  policyNumber   String?
+  effectiveDate  DateTime?
+  expirationDate DateTime?
+  limitAmount    Float?    // per-occurrence limit in dollars
+  aggregateLimit Float?    // general aggregate in dollars
+  isExpired      Boolean   @default(false)
+  isCompliant    Boolean   @default(false)
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  document Document @relation(fields: [documentId], references: [id], onDelete: Cascade)
+
+  @@index([documentId])
+  @@index([coverageType])
+  @@index([expirationDate])
+}
+
+/// Log of extraction attempts for a document
+model ExtractionLog {
+  id           String   @id @default(cuid())
+  documentId   String   @unique
+  startedAt    DateTime @default(now())
+  completedAt  DateTime?
+  success      Boolean  @default(false)
+  errorMessage String?
+  rawOutput    String?  // raw extraction output for debugging
+  createdAt    DateTime @default(now())
+
+  document Document @relation(fields: [documentId], references: [id], onDelete: Cascade)
+}
