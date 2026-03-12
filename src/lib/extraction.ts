@@ -43,9 +43,12 @@ export interface ExtractionResult {
  * Production: integrate OCR (Textract, Google Vision) + LLM extraction.
  */
 export async function parseCOIDocument(
-  _filePath: string,
-  _mimeType: string
+  filePath: string,
+  mimeType: string
 ): Promise<ExtractionResult> {
+  void filePath;
+  void mimeType;
+
   // Stub: in production, this would:
   // 1. Send the document to an OCR service
   // 2. Parse the OCR output with an LLM or rule-based extractor
